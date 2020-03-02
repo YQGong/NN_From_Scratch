@@ -8,10 +8,10 @@ import copy
 # 数据集路径
 dataset_path = Path('./dataset')
 # 训练图片集路径
-train_img_path = './dataset/train-images-idx3-ubyte'
-train_lab_path = './dataset/train-labels-idx1-ubyte'
-test_img_path = './dataset/t10k-images-idx3-ubyte'
-test_lab_path = './dataset/t10k-labels-idx1-ubyte'
+train_img_path = './dataset/train-images.idx3-ubyte'
+train_lab_path = './dataset/train-labels.idx1-ubyte'
+test_img_path = './dataset/t10k-images.idx3-ubyte'
+test_lab_path = './dataset/t10k-labels.idx1-ubyte'
 
 
 def tanh(x):
@@ -54,11 +54,13 @@ def init_parameters():
 		parameter.append(layer_parameter)
 	return parameter
 
+g_parameters = init_parameters()
+
 # 预测函数
 def predict(img,init_parameters):
-	l0_in = img+parameters[0]['b']
+	l0_in = img+g_parameters[0]['b']
 	l0_out = activation[0](l0_in)
-	l1_in = np.dot(l0_out,parameters[1]['w'])+parameters[1]['b']
+	l1_in = np.dot(l0_out,g_parameters[1]['w'])+g_parameters[1]['b']
 	l1_out = activation[1](l1_in)
 	return l1_out
 # print(predict(np.random.rand(784),parameters).argmax())
@@ -151,9 +153,9 @@ def sqr_loss(img,lab,parameters):
 
 # 计算梯度
 def grad_parameters(img,lab,init_parameters):
-	l0_in = img+parameters[0]['b']
+	l0_in = img+g_parameters[0]['b']
 	l0_out = activation[0](l0_in)
-	l1_in = np.dot(l0_out,parameters[1]['w'])+parameters[1]['b']
+	l1_in = np.dot(l0_out,g_parameters[1]['w'])+g_parameters[1]['b']
 	l1_out = activation[1](l1_in)
 	
 	diff = onehot[lab]-l1_out
@@ -162,7 +164,7 @@ def grad_parameters(img,lab,init_parameters):
 	grad_b1 = -2*act1
 	grad_w1 = -2*np.outer(l0_out,act1)
 	# 与上文优化d_tanh有关，将矩阵乘法化为数组乘以矩阵
-	grad_b0 = -2*differential[activation[0]](l0_in)*np.dot(parameters[1]['w'],act1)
+	grad_b0 = -2*differential[activation[0]](l0_in)*np.dot(g_parameters[1]['w'],act1)
 
 	return {'b1':grad_b1,'w1':grad_w1,'b0':grad_b0}
 
@@ -239,14 +241,15 @@ def learn_self(learn_rate):
 	for i in range(train_num//batch_size):
 		if i%100 == 99:
 			print("running batch {}/{}".format(i+1,train_num//batch_size))
-		grad_tmp = train_batch(i,parameters)
-		global parameters
-		parameters = combine_parameters(parameters,grad_tmp,learn_rate)
+		global g_parameters
+		grad_tmp = train_batch(i,g_parameters)
+		g_parameters = combine_parameters(g_parameters,grad_tmp,learn_rate)
 
-parameters = init_parameters()
-valid_accuracy(parameters)
-learn_self(1);
-valid_accuracy(parameters)
+EPOCH = 20
+valid_accuracy(g_parameters)
+for e in range(EPOCH):
+	learn_self(1)
+	valid_accuracy(g_parameters)
 
 # train_batch(0,parameters)
 # print(valid_loss(parameters))
